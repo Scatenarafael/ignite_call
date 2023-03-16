@@ -1,6 +1,7 @@
 import { api } from '@/lib/axios'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { Button, Heading, MultiStep, Text, TextInput } from '@ignite-ui/react'
+import { AxiosError } from 'axios'
 import { useRouter } from 'next/router'
 import { ArrowRight } from 'phosphor-react'
 import React, { useEffect } from 'react'
@@ -47,7 +48,12 @@ export default function Register() {
         name: data.name,
         username: data.username,
       })
-    } catch (err) {
+
+      await router.push('register/connect-calendar')
+    } catch (err: any) {
+      if (err instanceof AxiosError && err?.response?.data?.message) {
+        alert(err.response.data.message)
+      }
       console.log(err)
     }
     console.log(data)
