@@ -1,8 +1,9 @@
 import Calendar from '@/components/Calendar'
 import { api } from '@/lib/axios'
+import { useQuery } from '@tanstack/react-query'
 import dayjs from 'dayjs'
 import { useRouter } from 'next/router'
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import {
   Container,
   TimePicker,
@@ -11,9 +12,19 @@ import {
   TimePickerList,
 } from './styles'
 
-export function CalendarStep() {
+interface Availability {
+  possibleTimes: number[]
+  availableTimes: number[]
+}
+
+interface CalendarStepProps {
+  onSelectDateTime: (date: Date) => void
+}
+
+export function CalendarStep({ onSelectDateTime }: CalendarStepProps) {
   const [selectedDate, setSelectedDate] = useState<Date | null>(null)
-  const [availability, setAvailability] = useState(null)
+  // const [availability, setAvailability] = useState<Availability | null>(null)
+
   const isDateSelected = !!selectedDate
 
   const weekDay = selectedDate ? dayjs(selectedDate).format('dddd') : null
@@ -25,22 +36,34 @@ export function CalendarStep() {
 
   const username = String(router.query.username)
 
-  useEffect(() => {
-    if (!selectedDate) {
-      return
-    }
+  const selectedDateWithoutTime = selectedDate
+    ? dayjs(selectedDate).format('YYYY-MM-DD')
+    : null
 
-    api
-      .get(`/users/${username}/availability`, {
+  const { data: availability } = useQuery<Availability>(
+    ['availability', selectedDateWithoutTime],
+    async () => {
+      const response = await api.get(`/users/${username}/availability`, {
         params: {
-          date: dayjs(selectedDate).format('YYYY-MM-DD'),
+          date: selectedDateWithoutTime,
         },
       })
-      .then((response) => {
-        console.log(response.data)
-      })
-  }, [selectedDate, username])
 
+      return response.data
+    },
+    {
+      enabled: !!selectedDate,
+    },
+  )
+
+  function handleSelectTime(hour: number) {
+    const dateWithTime = dayjs(selectedDate)
+      .set('hour', hour)
+      .startOf('hour')
+      .toDate()
+
+    onSelectDateTime(dateWithTime)
+  }
   return (
     <Container isTimePickerOpen={isDateSelected}>
       <Calendar selectedDate={selectedDate} onDateSelected={setSelectedDate} />
@@ -52,17 +75,19 @@ export function CalendarStep() {
           </TimePickerHeader>
 
           <TimePickerList>
-            <TimePickerItem>08:00</TimePickerItem>
-            <TimePickerItem>09:00</TimePickerItem>
-            <TimePickerItem>10:00</TimePickerItem>
-            <TimePickerItem>11:00</TimePickerItem>
-            <TimePickerItem>12:00</TimePickerItem>
-            <TimePickerItem>13:00</TimePickerItem>
-            <TimePickerItem>14:00</TimePickerItem>
-            <TimePickerItem>15:00</TimePickerItem>
-            <TimePickerItem>16:00</TimePickerItem>
-            <TimePickerItem>17:00</TimePickerItem>
-            <TimePickerItem>18:00</TimePickerItem>
+            {availability?.possibleTimes?.map((hour) => {
+              return (
+                <TimePickerItem
+                  key={hour}
+                  disabled={!availability.availableTimes.includes(hour)}
+                  onClick={() => {
+                    handleSelectTime(hour)
+                  }}
+                >
+                  {String(hour).padStart(2, '0')}:00h
+                </TimePickerItem>
+              )
+            })}
           </TimePickerList>
         </TimePicker>
       )}
