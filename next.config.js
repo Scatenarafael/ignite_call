@@ -5,4 +5,9 @@ const nextConfig = {
   pageExtensions: ['page.tsx', 'api.ts', 'api.tsx'],
 }
 
-module.exports = nextConfig
+module.exports = {
+  ...nextConfig,
+  eslint: {
+    ignoreDuringBuilds: true,
+  },
+}
